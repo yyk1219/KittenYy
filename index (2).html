@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>KittenY's OS · 四核桌面</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      overflow: hidden;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(145deg, #fce4ec 0%, #f3e5f5 100%);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .wallpaper-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: inherit;
+      background-size: cover;
+      background-position: center;
+      transition: background-image 0.5s ease;
+    }
+    .content-layer { position: relative; z-index: 1; }
+    .safe-area-top {
+      padding-top: max(env(safe-area-inset-top, 56px), 56px);
+      padding-top: max(constant(safe-area-inset-top, 56px), 56px);
+    }
+    .glass-clear {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(18px) saturate(180%);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
+    }
+    .glass-strong {
+      background: rgba(255, 255, 255, 0.55);
+      backdrop-filter: blur(24px) saturate(200%);
+      -webkit-backdrop-filter: blur(24px) saturate(200%);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+    .time-glass {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .dock-glass {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.05);
+    }
+    .home-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      background: rgba(255, 255, 255, 0.35);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      flex-shrink: 0;
+    }
+    .home-icon:hover {
+      transform: scale(1.08) translateY(-4px);
+      background: rgba(255, 255, 255, 0.6);
+      border-color: rgba(255, 255, 255, 0.9);
+      box-shadow: 0 16px 40px rgba(233, 30, 99, 0.10);
+    }
+    .dock-icon {
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .dock-icon:hover {
+      transform: scale(1.12) translateY(-6px);
+    }
+    .dock-icon-wrap {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      flex-shrink: 0;
+    }
+    .app-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 18px; }
+    .dock-icon-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(255,255,255,0.2); border-radius: 20px; }
+    ::-webkit-scrollbar-thumb { background: rgba(233, 30, 99, 0.25); border-radius: 20px; }
+
+    @keyframes heart-rotate {
+      0% { transform: translate(-50%, -50%) rotate(0deg) translateX(70px) rotate(0deg) scale(1); opacity: 0.8; }
+      50% { transform: translate(-50%, -50%) rotate(180deg) translateX(85px) rotate(-180deg) scale(1.2); opacity: 1; }
+      100% { transform: translate(-50%, -50%) rotate(360deg) translateX(70px) rotate(-360deg) scale(1); opacity: 0.8; }
+    }
+    @keyframes heart-rotate-reverse {
+      0% { transform: translate(-50%, -50%) rotate(360deg) translateX(65px) rotate(-360deg) scale(1.1); opacity: 0.6; }
+      50% { transform: translate(-50%, -50%) rotate(180deg) translateX(50px) rotate(-180deg) scale(0.9); opacity: 0.9; }
+      100% { transform: translate(-50%, -50%) rotate(0deg) translateX(65px) rotate(0deg) scale(1.1); opacity: 0.6; }
+    }
+    .anim-heart-1 { animation: heart-rotate 2.5s infinite linear; }
+    .anim-heart-2 { animation: heart-rotate-reverse 3s infinite linear; }
+
+    .chat-item { transition: all 0.2s ease; }
+    .chat-item:active { transform: scale(0.97); background: rgba(255,255,255,0.3); }
+    .bubble-mine { background: #95ec69; color: #1a1a1a; border-bottom-right-radius: 4px; }
+    .bubble-other { background: #ffffff; color: #1a1a1a; border-bottom-left-radius: 4px; }
+    .hidden-input { display: none; }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+      backdrop-filter: blur(8px); z-index: 200;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-box {
+      background: rgba(255,255,255,0.92); backdrop-filter: blur(20px);
+      border-radius: 32px; max-width: 420px; width: 100%; max-height: 90vh;
+      overflow-y: auto; padding: 24px; border: 1px solid rgba(255,255,255,0.5);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+    }
+    .modal-box::-webkit-scrollbar { width: 4px; }
+    .modal-box::-webkit-scrollbar-thumb { background: rgba(233,30,99,0.3); border-radius: 10px; }
+
+    .avatar-upload {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: rgba(233,30,99,0.08); border: 2px dashed rgba(233,30,99,0.3);
+      display: flex; align-items: center; justify-content: center; font-size: 32px;
+      cursor: pointer; transition: all 0.3s; margin: 0 auto;
+    }
+    .avatar-upload:hover { border-color: rgba(233,30,99,0.6); background: rgba(233,30,99,0.12); }
+    .avatar-upload.has-image { border: 2px solid rgba(233,30,99,0.3); background: transparent; }
+    .avatar-upload img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+
+    .form-input {
+      width: 100%; padding: 12px 16px; border-radius: 16px;
+      background: rgba(255,255,255,0.6); border: 1px solid rgba(0,0,0,0.08);
+      transition: all 0.3s; font-size: 14px; color: #1a1a1a;
+    }
+    .form-input:focus { outline: none; border-color: rgba(233,30,99,0.4); box-shadow: 0 0 0 3px rgba(233,30,99,0.08); }
+    .form-input::placeholder { color: #aaa; }
+    .form-textarea { min-height: 80px; resize: vertical; font-family: inherit; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 4px; }
+    .form-group { margin-bottom: 16px; }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: #999; }
+    .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+    .empty-state p { font-size: 14px; }
+
+    .icon-grid-item { transition: all 0.2s ease; cursor: pointer; border-radius: 20px; padding: 12px 8px; background: rgba(255,255,255,0.3); border: 2px solid transparent; }
+    .icon-grid-item:hover { background: rgba(255,255,255,0.5); transform: scale(1.02); }
+    .icon-grid-item.selected { border-color: #ec4899; background: rgba(236, 72, 153, 0.12); }
+    .icon-preview-circle { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin: 0 auto; background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.3); transition: all 0.3s ease; overflow: hidden; }
+    .icon-preview-circle img { width: 100%; height: 100%; object-fit: cover; }
+    .icon-preview-circle .emoji-fallback { font-size: 28px; }
+    .icon-upload-btn { position: absolute; bottom: -4px; right: -4px; width: 24px; height: 24px; border-radius: 50%; background: #ec4899; color: white; border: 2px solid white; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; transition: all 0.2s; box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3); }
+    .icon-upload-btn:hover { transform: scale(1.15); background: #db2777; }
+    .icon-wrapper { position: relative; display: inline-block; }
+    .reset-icon-btn { font-size: 12px; color: #999; cursor: pointer; transition: all 0.2s; padding: 4px 10px; border-radius: 12px; background: rgba(0,0,0,0.04); }
+    .reset-icon-btn:hover { color: #ef4444; background: rgba(239, 68, 68, 0.08); }
+
+    .toggle-switch { position: relative; width: 52px; height: 28px; background: #d1d5db; border-radius: 14px; cursor: pointer; transition: all 0.3s; flex-shrink: 0; }
+    .toggle-switch::after { content: ''; position: absolute; width: 24px; height: 24px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: all 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+    .toggle-switch.active { background: #10b981; }
+    .toggle-switch.active::after { left: 26px; }
+    .toggle-switch.active.global { background: #8b5cf6; }
+
+    .worldbook-item { transition: all 0.2s ease; }
+    .worldbook-item:active { transform: scale(0.98); }
+
+    /* ===== 唱片机样式 ===== */
+    .record-wrapper {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      position: relative;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.4);
+      border: 2px solid rgba(168, 162, 158, 0.3);
+      overflow: hidden;
+      animation: spin 6s linear infinite;
+      background: radial-gradient(circle at 30% 35%, #555 0%, #1a1a1a 60%, #222 100%);
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .record-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      overflow: hidden;
+      border: 2px solid rgba(255,255,255,0.2);
+      background: #f0e6d3;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 34px;
+      cursor: pointer;
+    }
+    .record-hole {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      border: 2px solid rgba(100, 100, 100, 0.5);
+    }
+    .tonearm {
+      position: absolute;
+      top: -2px;
+      right: 8px;
+      width: 75px;
+      height: 75px;
+      z-index: 10;
+      pointer-events: none;
+    }
+    .tonearm-arm {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 2.5px;
+      height: 55px;
+      background: rgba(60, 50, 40, 0.75);
+      border-radius: 2px;
+      transform-origin: top right;
+      transform: rotate(-25deg);
+    }
+    .tonearm-head {
+      position: absolute;
+      bottom: -4px;
+      right: -5px;
+      width: 12px;
+      height: 12px;
+      background: rgba(40, 35, 30, 0.85);
+      border-radius: 50%;
+    }
+    .tonearm-base {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 14px;
+      height: 14px;
+      background: rgba(50, 45, 40, 0.5);
+      border-radius: 50%;
+    }
+    .tonearm-shadow {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 2px;
+      height: 50px;
+      background: rgba(0,0,0,0.05);
+      border-radius: 2px;
+      transform-origin: top right;
+      transform: rotate(-25deg);
+    }
+    .player {
+      position: relative;
+      display: block; 
+      width: 160px;    
+      height: 160px;   
+      flex-shrink: 0;  
+    }
+
+    /* ===== 全屏滑动 ===== */
+    .swiper-fullscreen {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      overflow: hidden;
+      touch-action: pan-y;
+    }
+    .swiper-track {
+      display: flex;
+      width: 200vw;
+      height: 100%;
+      transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      will-change: transform;
+    }
+    .swiper-track.dragging {
+      transition: none;
+    }
+    .swiper-page {
+      width: 100vw;
+      height: 100%;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .swiper-dots {
+      position: fixed;
+      bottom: 96px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      z-index: 30;
+      pointer-events: auto;
+    }
+    .swiper-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.18);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .swiper-dot.active {
+      width: 18px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.7);
+    }
+    /* 时间卡片头像 - 垂直排列 */
+    .time-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 2px solid rgba(255,255,255,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      cursor: pointer;
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .time-avatar:hover { transform: scale(1.05); border-color: rgba(255,255,255,0.8); }
+    .time-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .time-avatar-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-right: 12px;
+    }
+    .time-avatar-wrapper .time-avatar {
+      width: 40px;
+      height: 40px;
+    }
+    .time-content {
+      flex: 1;
+      text-align: center;
+    }
+
+    /* 第一页固定布局 */
+    .page1-layout {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding-top: max(env(safe-area-inset-top, 56px), 56px);
+      padding-bottom: 120px;
+      padding-left: 16px;
+      padding-right: 16px;
+      overflow: hidden;
+    }
+    .page1-top {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 8px;
+    }
+    .page1-middle {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      min-height: 0;
+      padding-top: 8px;
+    }
+    .page1-icons {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px 16px;
+      padding-left: 12px;
+      align-self: flex-start;
+      padding-top: 4px;
+    }
+    .page1-player {
+      align-self: flex-start;
+      padding-right: 5px;
+      padding-top: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="wallpaper-overlay" class="wallpaper-overlay"></div>
+
+  <!-- 开屏动画 -->
+  <div id="splash-screen" class="fixed inset-0 z-[100] bg-[#faf6f0] flex flex-col justify-center items-center transition-all duration-700 ease-out">
+    <div class="relative flex flex-col items-center justify-center p-12">
+      <div class="absolute top-1/2 left-1/2 text-pink-300 text-lg anim-heart-1 pointer-events-none"><i class="fas fa-heart"></i></div>
+      <div class="absolute top-1/2 left-1/2 text-pink-400 text-xs anim-heart-2 pointer-events-none"><i class="fas fa-heart"></i></div>
+      <div class="absolute top-1/2 left-1/2 text-pink-200 text-sm anim-heart-1 pointer-events-none" style="animation-delay: -1.2s;"><i class="fas fa-heart"></i></div>
+      <h1 class="text-2xl font-bold text-stone-700 tracking-wide font-serif mb-2">KittenY's Home</h1>
+      <p class="text-sm text-stone-400 font-medium tracking-widest uppercase">welcome home</p>
+      <div class="mt-6 text-pink-400/80 text-xs tracking-widest animate-bounce"><i class="fas fa-heart"></i></div>
+    </div>
+  </div>
+
+  <!-- ===== 全屏滑动容器 ===== -->
+  <div class="swiper-fullscreen" id="homeSwiper">
+    <div class="swiper-track" id="swiperTrack">
+
+      <!-- ========== 第一页 ========== -->
+      <div class="swiper-page">
+        <div class="page1-layout">
+          <!-- 时间卡片 -->
+          <div class="page1-top">
+            <div class="time-glass w-full max-w-lg p-5 md:p-7 rounded-[3rem] text-center shadow-xl border border-white/30 flex items-center justify-between" style="cursor:default;">
+              <div class="time-avatar-wrapper">
+                <div class="time-avatar" onclick="document.getElementById('avatarLeftInput').click();" title="点击上传头像">
+                  <span id="avatarLeftPlaceholder">👤</span>
+                </div>
+                <div class="time-avatar" onclick="document.getElementById('avatarRightInput').click();" title="点击上传头像">
+                  <span id="avatarRightPlaceholder">👤</span>
+                </div>
+              </div>
+              <div class="time-content">
+                <div id="date-display" class="text-sm font-medium text-black/80 tracking-wider mb-1">2026年6月24日 周三</div>
+                <div id="clock" class="text-6xl md:text-8xl font-black text-black tracking-tighter drop-shadow-sm">00:00</div>
+                <div class="text-black font-bold mt-0.5 text-sm md:text-lg tracking-wider">✦ KittenY's Desktop ✦</div>
+              </div>
+              <div class="w-[44px]"></div>
+            </div>
+          </div>
+
+          <input type="file" id="avatarLeftInput" accept="image/*" class="hidden-input" onchange="handleAvatarUpload(event, 'left')">
+          <input type="file" id="avatarRightInput" accept="image/*" class="hidden-input" onchange="handleAvatarUpload(event, 'right')">
+
+          <div class="page1-middle">
+            <div class="page1-icons" id="home-screen">
+              <div onclick="openApp('worldbook')" class="flex flex-col items-center cursor-pointer group" data-app="worldbook">
+                <div class="home-icon" id="icon-worldbook">📖</div>
+                <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">世界书</span>
+              </div>
+              <div onclick="openApp('dev')" class="flex flex-col items-center cursor-pointer group relative" data-app="dev">
+                <div class="home-icon" id="icon-dev">🛠️</div>
+                <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">开发</span>
+              </div>
+              <div onclick="openApp('couple')" class="flex flex-col items-center cursor-pointer group" data-app="couple">
+                <div class="home-icon" id="icon-couple">💕</div>
+                <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">情侣空间</span>
+              </div>
+              <div onclick="openApp('cat')" class="flex flex-col items-center cursor-pointer group" data-app="cat">
+                <div class="home-icon" id="icon-cat">🐱</div>
+                <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">猫窝</span>
+              </div>
+            </div>
+
+            <div class="page1-player">
+              <div class="player">
+                <div class="record-wrapper" id="recordDisc">
+                  <div class="record-center" id="recordCover" onclick="document.getElementById('recordCoverInput').click();">
+                    <span id="recordPlaceholder">💿</span>
+                  </div>
+                  <div class="record-hole"></div>
+                </div>
+                <div class="tonearm">
+                  <div class="tonearm-arm"></div>
+                  <div class="tonearm-head"></div>
+                  <div class="tonearm-base"></div>
+                  <div class="tonearm-shadow"></div>
+                </div>
+              </div>
+              <input type="file" id="recordCoverInput" accept="image/*" class="hidden-input" onchange="handleCover(event)">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== 第二页 ========== -->
+      <div class="swiper-page">
+        <div class="flex flex-col items-center justify-center safe-area-top px-4" style="min-height: 100%; padding-bottom: 120px;">
+          <div class="text-6xl mb-4 opacity-40">🌙</div>
+          <p class="text-stone-500 font-medium text-lg">更多内容即将到来</p>
+          <p class="text-stone-400 text-sm mt-1">敬请期待 ✨</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="swiper-dots" id="swiperDots">
+    <div class="swiper-dot active" data-index="0"></div>
+    <div class="swiper-dot" data-index="1"></div>
+  </div>
+
+  <!-- Dock栏 -->
+  <div class="fixed bottom-32 left-1/2 -translate-x-1/2 w-[200px] z-40 rounded-2xl px-3 py-2 flex items-center gap-2 transition-all duration-200" 
+       style="background: rgba(255,255,255,0.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
+    <i class="fas fa-search text-stone-400/70 text-sm"></i>
+    <span class="text-stone-400/70 text-sm font-medium tracking-wide">搜索</span>
+  </div>
+
+  <div class="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-lg rounded-3xl py-3 px-3 flex justify-around items-center z-40" style="background: rgba(255,255,255,0.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.15);">
+    <button onclick="openApp('chat')" class="dock-icon flex flex-col items-center text-stone-600 hover:text-pink-600 transition-colors">
+      <div class="dock-icon-wrap" id="icon-chat">💬</div>
+      <span class="text-[10px] mt-0.5">信息</span>
+    </button>
+    <button onclick="openApp('settings')" class="dock-icon flex flex-col items-center text-stone-600 hover:text-pink-600 transition-colors">
+      <div class="dock-icon-wrap" id="icon-settings">⚙️</div>
+      <span class="text-[10px] mt-0.5">设置</span>
+    </button>
+    <button onclick="openApp('appearance')" class="dock-icon flex flex-col items-center text-stone-600 hover:text-pink-600 transition-colors">
+      <div class="dock-icon-wrap" id="icon-appearance">🎨</div>
+      <span class="text-[10px] mt-0.5">外观</span>
+    </button>
+    <button onclick="openApp('cloud')" class="dock-icon flex flex-col items-center text-stone-600 hover:text-pink-600 transition-colors relative">
+      <div class="dock-icon-wrap" id="icon-cloud">☁️</div>
+      <span class="text-[10px] mt-0.5">云记忆库</span>
+      <span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full shadow-lg ring-2 ring-white/60 animate-pulse"></span>
+    </button>
+  </div>
+
+  <!-- 全屏应用视图 -->
+  <div id="app-view" class="fixed inset-0 glass-strong z-50 hidden p-4 md:p-6 overflow-y-auto safe-area-top" style="padding-bottom: 100px;">
+    <button onclick="closeApp()" class="mb-4 font-bold text-xl text-stone-700 hover:text-pink-600 transition-colors flex items-center gap-2 bg-white/30 backdrop-blur-sm px-4 py-2 rounded-full w-fit">
+      <span>←</span> 返回桌面
+    </button>
+    <div id="app-content" class="max-w-3xl mx-auto"></div>
+  </div>
+
+  <!-- 添加角色模态框 -->
+  <div id="add-role-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeModal()">
+    <div class="modal-box">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-stone-800">添加新好友</h3>
+        <button onclick="closeModal()" class="text-stone-400 hover:text-stone-600 text-xl">&times;</button>
+      </div>
+      <div class="form-group text-center">
+        <div id="avatar-preview" class="avatar-upload" onclick="document.getElementById('avatar-input').click()">
+          <span id="avatar-placeholder">📷</span>
+        </div>
+        <input type="file" id="avatar-input" accept="image/*" class="hidden-input" onchange="previewAvatar(event)">
+        <p class="text-xs text-stone-400 mt-1">点击上传Ta的头像</p>
+      </div>
+      <div class="form-group"><label class="form-label">名字</label><input id="role-name" class="form-input" placeholder="给Ta起个名字"></div>
+      <div class="form-group">
+        <label class="form-label">分组</label>
+        <select id="role-group" class="form-input"><option value="默认">默认</option><option value="好友">好友</option><option value="家人">家人</option><option value="工作">工作</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">关联世界书</label>
+        <select id="role-worldbook" class="form-input"><option value="">-- 不使用世界书 --</option></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ta的人设 (AI PERSONA)</label>
+        <textarea id="role-persona" class="form-input form-textarea" placeholder="输入详细的角色性格、背景故事、说话语气..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">我的身份 (USER PERSONA)</label>
+        <select id="user-persona" class="form-input"><option value="">-- 默认 (不使用预设) --</option><option value="主人">主人</option><option value="朋友">朋友</option><option value="恋人">恋人</option><option value="学生">学生</option></select>
+      </div>
+      <button onclick="saveRole()" class="w-full bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-600 hover:to-rose-500 text-white py-3 rounded-2xl font-bold shadow-lg transition-all mt-2">添加</button>
+    </div>
+  </div>
+
+  <!-- 世界书模态框 -->
+  <div id="worldbook-modal" class="modal-overlay hidden" onclick="if(event.target===this) closeWorldbookModal()">
+    <div class="modal-box">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-xl font-bold text-stone-800" id="worldbook-modal-title">📖 新建条目</h3>
+        <button onclick="closeWorldbookModal()" class="text-stone-400 hover:text-stone-600 text-xl">&times;</button>
+      </div>
+      <div class="form-group"><label class="form-label">名称</label><input id="wb-name" class="form-input" placeholder="条目名称，如：魔法体系"></div>
+      <div class="form-group"><label class="form-label">内容</label><textarea id="wb-content" class="form-input form-textarea" placeholder="输入世界观的详细内容..."></textarea></div>
+      <div class="form-group"><label class="form-label">触发词</label><input id="wb-keywords" class="form-input" placeholder="多个触发词用逗号分隔，如：魔法,法术,咒语"><p class="text-xs text-stone-400 mt-1">当用户消息包含这些词时触发</p></div>
+      <div class="form-group">
+        <label class="form-label">触发模式</label>
+        <div class="flex gap-4 mt-2">
+          <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="wb-mode" value="global" class="hidden peer" onchange="updateModeHint()"><span class="w-5 h-5 rounded-full border-2 border-stone-300 peer-checked:border-purple-500 peer-checked:bg-purple-500 flex items-center justify-center transition-all"><span class="w-2 h-2 rounded-full bg-white hidden peer-checked:block"></span></span><span class="text-sm text-stone-600">🌐 全局</span></label>
+          <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="wb-mode" value="trigger" checked class="hidden peer" onchange="updateModeHint()"><span class="w-5 h-5 rounded-full border-2 border-stone-300 peer-checked:border-emerald-500 peer-checked:bg-emerald-500 flex items-center justify-center transition-all"><span class="w-2 h-2 rounded-full bg-white hidden peer-checked:block"></span></span><span class="text-sm text-stone-600">🎯 触发</span></label>
+        </div>
+        <p id="mode-hint" class="text-xs text-stone-400 mt-1">🎯 触发模式：仅当触发词匹配时发送给AI</p>
+      </div>
+      <button onclick="saveWorldbook()" class="w-full bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white py-3 rounded-2xl font-bold shadow-lg transition-all mt-2">💾 保存</button>
+    </div>
+  </div>
+
+  <input type="file" id="wallpaper-input" accept="image/*" class="hidden-input" onchange="handleWallpaperUpload(event)">
+  <input type="file" id="app-icon-input" accept="image/*" class="hidden-input" onchange="handleAppIconUpload(event)">
+
+  <script>
+    (function() {
+      "use strict";
+
+      const APP_ICONS = {
+        chat: { emoji: '💬', label: '信息' },
+        settings: { emoji: '⚙️', label: '设置' },
+        worldbook: { emoji: '📖', label: '世界书' },
+        cloud: { emoji: '☁️', label: '云记忆库' },
+        dev: { emoji: '🛠️', label: '开发' },
+        appearance: { emoji: '🎨', label: '外观' },
+        couple: { emoji: '💕', label: '情侣空间' },
+        cat: { emoji: '🐱', label: '猫窝' }
+      };
+
+      let editingAppId = null;
+
+      function loadCustomIcons() {
+        try { const data = localStorage.getItem('kitten_app_icons'); return data ? JSON.parse(data) : {}; } catch(e) { return {}; }
+      }
+      function saveCustomIcons(icons) { localStorage.setItem('kitten_app_icons', JSON.stringify(icons)); }
+
+      function updateDesktopIcon(appId) {
+        const iconEl = document.getElementById(`icon-${appId}`);
+        if (!iconEl) return;
+        const customIcons = loadCustomIcons();
+        if (customIcons[appId] && customIcons[appId].startsWith('data:')) {
+          iconEl.innerHTML = `<img src="${customIcons[appId]}" class="w-full h-full object-cover rounded-[18px]">`;
+        } else {
+          iconEl.innerHTML = APP_ICONS[appId]?.emoji || '📱';
+        }
+      }
+
+      window.resetAppIcon = function(appId) {
+        if (!confirm(`确定要重置「${APP_ICONS[appId]?.label || appId}」的图标吗？`)) return;
+        const customIcons = loadCustomIcons();
+        delete customIcons[appId];
+        saveCustomIcons(customIcons);
+        updateDesktopIcon(appId);
+        const content = document.getElementById('app-content');
+        if (content.dataset.view === 'appearance') renderAppearance(content);
+      };
+
+      window.resetAllIcons = function() {
+        if (!confirm('确定要重置所有应用图标吗？')) return;
+        saveCustomIcons({});
+        Object.keys(APP_ICONS).forEach(id => updateDesktopIcon(id));
+        const content = document.getElementById('app-content');
+        if (content.dataset.view === 'appearance') renderAppearance(content);
+        alert('✅ 所有图标已重置');
+      };
+
+      window.handleAppIconUpload = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const imageUrl = e.target.result;
+          if (editingAppId) {
+            const customIcons = loadCustomIcons();
+            customIcons[editingAppId] = imageUrl;
+            saveCustomIcons(customIcons);
+            updateDesktopIcon(editingAppId);
+            const content = document.getElementById('app-content');
+            if (content.dataset.view === 'appearance') renderAppearance(content);
+            alert(`✅ 「${APP_ICONS[editingAppId]?.label || editingAppId}」图标已更新`);
+            editingAppId = null;
+          }
+        };
+        reader.readAsDataURL(file);
+        event.target.value = '';
+      };
+
+      window.selectAppForIcon = function(appId) {
+        editingAppId = appId;
+        document.getElementById('app-icon-input').click();
+      };
+
+      function loadRoles() {
+        try { const data = localStorage.getItem('kitten_roles'); return data ? JSON.parse(data) : []; } catch(e) { return []; }
+      }
+      function saveRolesToStorage(roles) { localStorage.setItem('kitten_roles', JSON.stringify(roles)); }
+      function loadMessages() {
+        try { const data = localStorage.getItem('kitten_messages'); return data ? JSON.parse(data) : {}; } catch(e) { return {}; }
+      }
+      function saveMessagesToStorage(messages) { localStorage.setItem('kitten_messages', JSON.stringify(messages)); }
+      function loadWorldbooks() {
+        try { const data = localStorage.getItem('kitten_worldbooks'); return data ? JSON.parse(data) : []; } catch(e) { return []; }
+      }
+      function saveWorldbooksToStorage(books) { localStorage.setItem('kitten_worldbooks', JSON.stringify(books)); }
+
+      let currentWorldbookId = null;
+      let currentRoleId = null;
+      let currentAvatarData = null;
+
+      window.addEventListener('DOMContentLoaded', function() {
+        var savedCover = localStorage.getItem('record_cover');
+        if (savedCover) {
+          var cover = document.getElementById('recordCover');
+          var placeholder = document.getElementById('recordPlaceholder');
+          cover.style.backgroundImage = 'url(' + savedCover + ')';
+          cover.style.backgroundSize = 'cover';
+          cover.style.backgroundPosition = 'center';
+          placeholder.style.display = 'none';
+        }
+
+        ['left', 'right'].forEach(side => {
+          const saved = localStorage.getItem('time_avatar_' + side);
+          if (saved) {
+            const el = document.getElementById('avatar' + side.charAt(0).toUpperCase() + side.slice(1) + 'Placeholder');
+            if (el) {
+              el.innerHTML = `<img src="${saved}" alt="avatar" style="width:100%;height:100%;object-fit:cover;">`;
+            }
+          }
+        });
+
+        const splash = document.getElementById('splash-screen');
+        setTimeout(function() {
+          splash.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+          setTimeout(function() { splash.style.display = 'none'; }, 700);
+        }, 2000);
+
+        const savedWallpaper = localStorage.getItem('kitten_wallpaper');
+        if (savedWallpaper) {
+          document.body.style.backgroundImage = `url(${savedWallpaper})`;
+          document.getElementById('wallpaper-overlay').style.backgroundImage = `url(${savedWallpaper})`;
+        }
+
+        const customIcons = loadCustomIcons();
+        Object.keys(customIcons).forEach(id => updateDesktopIcon(id));
+        Object.keys(APP_ICONS).forEach(id => updateDesktopIcon(id));
+
+        updateDate();
+        updateClock();
+        setInterval(updateClock, 10000);
+        setInterval(updateDate, 60000);
+
+        initSwiper();
+      });
+
+      function updateDate() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        const wd = weekdays[now.getDay()];
+        document.getElementById('date-display').innerText = `${year}年${month}月${day}日 ${wd}`;
+      }
+
+      function updateClock() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('clock').innerText = `${h}:${m}`;
+      }
+
+      function initSwiper() {
+        const container = document.getElementById('homeSwiper');
+        const track = document.getElementById('swiperTrack');
+        const dots = document.querySelectorAll('.swiper-dot');
+        const totalPages = 2;
+        let currentPage = 0;
+        let startX = 0;
+        let startY = 0;
+        let currentX = 0;
+        let isDragging = false;
+        let isHorizontal = null;
+
+        function goToPage(index) {
+          if (index < 0) index = 0;
+          if (index >= totalPages) index = totalPages - 1;
+          currentPage = index;
+          track.style.transform = `translateX(-${currentPage * 100}vw)`;
+          dots.forEach((dot, i) => {
+            dot.classList.toggle('active', i === currentPage);
+          });
+        }
+
+        dots.forEach(dot => {
+          dot.addEventListener('click', function() {
+            goToPage(parseInt(this.dataset.index));
+          });
+        });
+
+        container.addEventListener('touchstart', function(e) {
+          startX = e.touches[0].clientX;
+          startY = e.touches[0].clientY;
+          currentX = startX;
+          isDragging = true;
+          isHorizontal = null;
+          track.classList.add('dragging');
+        }, { passive: true });
+
+        container.addEventListener('touchmove', function(e) {
+          if (!isDragging) return;
+          const x = e.touches[0].clientX;
+          const y = e.touches[0].clientY;
+
+          if (isHorizontal === null) {
+            const dx = Math.abs(x - startX);
+            const dy = Math.abs(y - startY);
+            if (dx > 8 || dy > 8) {
+              isHorizontal = dx > dy;
+            }
+          }
+
+          if (!isHorizontal) return;
+
+          currentX = x;
+          const diff = currentX - startX;
+          const offset = -(currentPage * window.innerWidth) + diff;
+          track.style.transform = `translateX(${offset}px)`;
+        }, { passive: true });
+
+        container.addEventListener('touchend', function() {
+          if (!isDragging) return;
+          isDragging = false;
+          track.classList.remove('dragging');
+
+          if (isHorizontal) {
+            const diff = currentX - startX;
+            const threshold = window.innerWidth * 0.18;
+            if (diff < -threshold) goToPage(currentPage + 1);
+            else if (diff > threshold) goToPage(currentPage - 1);
+            else goToPage(currentPage);
+          } else {
+            goToPage(currentPage);
+          }
+
+          startX = 0;
+          currentX = 0;
+          isHorizontal = null;
+        });
+
+        container.addEventListener('mousedown', function(e) {
+          if (e.target.closest('button, a, input, select, textarea, .dock-icon, .home-icon, .record-center')) return;
+          startX = e.clientX;
+          currentX = startX;
+          isDragging = true;
+          isHorizontal = true;
+          track.classList.add('dragging');
+          e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', function(e) {
+          if (!isDragging) return;
+          currentX = e.clientX;
+          const diff = currentX - startX;
+          const offset = -(currentPage * window.innerWidth) + diff;
+          track.style.transform = `translateX(${offset}px)`;
+        });
+
+        document.addEventListener('mouseup', function() {
+          if (!isDragging) return;
+          isDragging = false;
+          track.classList.remove('dragging');
+          const diff = currentX - startX;
+          const threshold = window.innerWidth * 0.18;
+          if (diff < -threshold) goToPage(currentPage + 1);
+          else if (diff > threshold) goToPage(currentPage - 1);
+          else goToPage(currentPage);
+          startX = 0;
+          currentX = 0;
+        });
+      }
+
+      window.handleWallpaperUpload = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const imageUrl = e.target.result;
+          document.body.style.backgroundImage = `url(${imageUrl})`;
+          document.getElementById('wallpaper-overlay').style.backgroundImage = `url(${imageUrl})`;
+          localStorage.setItem('kitten_wallpaper', imageUrl);
+          alert('✅ 壁纸更换成功！');
+          closeApp();
+        };
+        reader.readAsDataURL(file);
+      };
+
+      window.resetWallpaper = function() {
+        document.body.style.backgroundImage = '';
+        document.getElementById('wallpaper-overlay').style.backgroundImage = '';
+        localStorage.removeItem('kitten_wallpaper');
+        alert('✅ 已恢复默认壁纸');
+        closeApp();
+      };
+
+      window.updateModeHint = function() {
+        const mode = document.querySelector('input[name="wb-mode"]:checked')?.value;
+        const hint = document.getElementById('mode-hint');
+        if (hint) {
+          hint.textContent = mode === 'global' ? '🌐 全局模式：每轮对话都会发送给AI' : '🎯 触发模式：仅当触发词匹配时发送给AI';
+        }
+      };
+
+      window.openModal = function() {
+        document.getElementById('add-role-modal').classList.remove('hidden');
+        document.getElementById('role-name').value = '';
+        document.getElementById('role-persona').value = '';
+        document.getElementById('role-group').value = '默认';
+        document.getElementById('user-persona').value = '';
+        document.getElementById('role-worldbook').value = '';
+        document.getElementById('avatar-placeholder').innerHTML = '📷';
+        document.getElementById('avatar-preview').classList.remove('has-image');
+        currentAvatarData = null;
+        const wbSelect = document.getElementById('role-worldbook');
+        const books = loadWorldbooks();
+        wbSelect.innerHTML = '<option value="">-- 不使用世界书 --</option>' + books.map(b => `<option value="${b.id}">📖 ${b.name}</option>`).join('');
+      };
+
+      window.closeModal = function() { document.getElementById('add-role-modal').classList.add('hidden'); };
+
+      window.previewAvatar = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          currentAvatarData = e.target.result;
+          const placeholder = document.getElementById('avatar-placeholder');
+          placeholder.innerHTML = `<img src="${currentAvatarData}" alt="avatar">`;
+          document.getElementById('avatar-preview').classList.add('has-image');
+        };
+        reader.readAsDataURL(file);
+      };
+
+      window.openWorldbookModal = function(worldbookId) {
+        currentWorldbookId = worldbookId || null;
+        const modal = document.getElementById('worldbook-modal');
+        const title = document.getElementById('worldbook-modal-title');
+        if (worldbookId) {
+          title.textContent = '📖 编辑条目';
+          const books = loadWorldbooks();
+          const book = books.find(b => b.id === worldbookId);
+          if (book) {
+            document.getElementById('wb-name').value = book.name || '';
+            document.getElementById('wb-content').value = book.content || '';
+            document.getElementById('wb-keywords').value = (book.keywords || []).join(',');
+            const modeRadio = document.querySelector(`input[name="wb-mode"][value="${book.mode || 'trigger'}"]`);
+            if (modeRadio) modeRadio.checked = true;
+            updateModeHint();
+          }
+        } else {
+          title.textContent = '📖 新建条目';
+          document.getElementById('wb-name').value = '';
+          document.getElementById('wb-content').value = '';
+          document.getElementById('wb-keywords').value = '';
+          document.querySelector('input[name="wb-mode"][value="trigger"]').checked = true;
+          updateModeHint();
+        }
+        modal.classList.remove('hidden');
+      };
+
+      window.closeWorldbookModal = function() { document.getElementById('worldbook-modal').classList.add('hidden'); currentWorldbookId = null; };
+
+      window.saveWorldbook = function() {
+        const name = document.getElementById('wb-name').value.trim();
+        const content = document.getElementById('wb-content').value.trim();
+        const keywordsStr = document.getElementById('wb-keywords').value.trim();
+        const mode = document.querySelector('input[name="wb-mode"]:checked')?.value || 'trigger';
+        if (!name) { alert('请输入条目名称'); return; }
+        if (!content) { alert('请输入内容'); return; }
+        if (mode === 'trigger' && !keywordsStr) { alert('触发模式下请输入触发词'); return; }
+        const keywords = keywordsStr ? keywordsStr.split(/[,，]/).map(k => k.trim()).filter(k => k) : [];
+        let books = loadWorldbooks();
+        if (currentWorldbookId) {
+          const idx = books.findIndex(b => b.id === currentWorldbookId);
+          if (idx >= 0) {
+            books[idx] = { ...books[idx], name, content, keywords, mode, updatedAt: new Date().toISOString() };
+          }
+        } else {
+          const newBook = { id: 'wb' + Date.now(), name, content, keywords, mode, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+          books.push(newBook);
+        }
+        saveWorldbooksToStorage(books);
+        closeWorldbookModal();
+        const contentEl = document.getElementById('app-content');
+        if (contentEl.dataset.view === 'worldbook') renderWorldbookList(contentEl);
+        alert('✅ 条目保存成功！');
+      };
+
+      window.toggleWorldbookMode = function(worldbookId) {
+        let books = loadWorldbooks();
+        const idx = books.findIndex(b => b.id === worldbookId);
+        if (idx >= 0) {
+          books[idx].mode = books[idx].mode === 'global' ? 'trigger' : 'global';
+          books[idx].updatedAt = new Date().toISOString();
+          saveWorldbooksToStorage(books);
+          const contentEl = document.getElementById('app-content');
+          if (contentEl.dataset.view === 'worldbook') renderWorldbookList(contentEl);
+        }
+      };
+
+      window.deleteWorldbook = function(worldbookId) {
+        if (!confirm('确定要删除这个条目吗？')) return;
+        let books = loadWorldbooks();
+        books = books.filter(b => b.id !== worldbookId);
+        saveWorldbooksToStorage(books);
+        const contentEl = document.getElementById('app-content');
+        if (contentEl.dataset.view === 'worldbook') renderWorldbookList(contentEl);
+      };
+
+      window.saveRole = function() {
+        const name = document.getElementById('role-name').value.trim();
+        const persona = document.getElementById('role-persona').value.trim();
+        const group = document.getElementById('role-group').value;
+        const userPersona = document.getElementById('user-persona').value;
+        const worldbookId = document.getElementById('role-worldbook').value;
+        if (!name) { alert('请给角色起个名字'); return; }
+        if (!persona) { alert('请填写角色的人设'); return; }
+        const roles = loadRoles();
+        const newRole = { id: 'r' + Date.now(), name, avatar: currentAvatarData || '😊', group, persona, userPersona, worldbookId: worldbookId || null, createdAt: new Date().toISOString() };
+        roles.push(newRole);
+        saveRolesToStorage(roles);
+        closeModal();
+        const contentEl = document.getElementById('app-content');
+        if (contentEl.dataset.view === 'list' || !contentEl.dataset.view) renderChatList(contentEl);
+        alert('✅ 角色添加成功！');
+      };
+
+      window.deleteRole = function(roleId) {
+        if (!confirm('确定要删除这个角色吗？所有聊天记录也会被删除。')) return;
+        let roles = loadRoles();
+        roles = roles.filter(r => r.id !== roleId);
+        saveRolesToStorage(roles);
+        const messages = loadMessages();
+        delete messages[roleId];
+        saveMessagesToStorage(messages);
+        const contentEl = document.getElementById('app-content');
+        renderChatList(contentEl);
+      };
+
+      function renderWorldbookList(container) {
+        const books = loadWorldbooks();
+        let listHtml = `
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-3xl font-black text-stone-800">📖 世界书</h2>
+            <button onclick="openWorldbookModal()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg transition-all flex items-center gap-2"><i class="fas fa-plus"></i> 新建条目</button>
+          </div>
+          <div class="space-y-3">
+        `;
+        if (books.length === 0) {
+          listHtml += `<div class="glass-clear rounded-3xl p-8 text-center border border-white/50"><div class="text-5xl mb-4">📖</div><p class="font-medium text-stone-600">还没有条目</p><p class="text-sm text-stone-400 mt-1 mb-4">添加世界观设定，丰富AI的角色扮演体验</p><button onclick="openWorldbookModal()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-2 rounded-full text-sm font-bold shadow-lg transition-all">✨ 新建条目</button></div>`;
+        } else {
+          books.forEach(book => {
+            const isGlobal = book.mode === 'global';
+            const keywordTags = (book.keywords || []).map(k => `<span class="inline-block px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs border border-amber-200 mr-1 mb-1">${k}</span>`).join('');
+            listHtml += `
+              <div class="worldbook-item glass-clear rounded-2xl p-4 border border-white/50 hover:bg-white/25 transition-all">
+                <div class="flex items-start justify-between mb-2">
+                  <div class="flex-1 min-w-0"><div class="flex items-center gap-2 flex-wrap"><h3 class="font-bold text-stone-800">${book.name}</h3><span class="text-xs px-2 py-0.5 rounded-full ${isGlobal ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}">${isGlobal ? '🌐 全局' : '🎯 触发'}</span></div></div>
+                  <div class="flex items-center gap-2 ml-2">
+                    <div class="toggle-switch ${isGlobal ? 'active global' : 'active'}" onclick="event.stopPropagation(); toggleWorldbookMode('${book.id}')" title="切换全局/触发模式"></div>
+                    <button onclick="openWorldbookModal('${book.id}')" class="text-stone-400 hover:text-indigo-500 bg-white/30 p-2 rounded-full transition-colors"><i class="fas fa-edit text-sm"></i></button>
+                    <button onclick="deleteWorldbook('${book.id}')" class="text-stone-400 hover:text-rose-500 bg-white/30 p-2 rounded-full transition-colors"><i class="fas fa-trash-alt text-sm"></i></button>
+                  </div>
+                </div>
+                <p class="text-sm text-stone-600 line-clamp-2 mb-2">${book.content}</p>
+                ${book.keywords && book.keywords.length > 0 ? `<div class="flex flex-wrap items-center gap-1"><span class="text-xs text-stone-400">触发词：</span>${keywordTags}</div>` : ''}
+              </div>
+            `;
+          });
+        }
+        listHtml += `</div><div class="mt-4 text-xs text-stone-400 text-center bg-white/20 p-3 rounded-xl">💡 <b>全局</b>：每轮对话都发送 | <b>触发</b>：仅当消息匹配触发词时发送</div>`;
+        container.innerHTML = listHtml;
+        container.dataset.view = 'worldbook';
+      }
+
+      function renderChatList(container) {
+        const roles = loadRoles();
+        const messages = loadMessages();
+        let listHtml = `
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="text-3xl font-black text-stone-800">💬 信息</h2>
+            <button onclick="openModal()" class="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg transition-all flex items-center gap-2"><i class="fas fa-plus"></i> 添加角色</button>
+          </div>
+          <div class="glass-clear rounded-3xl overflow-hidden border border-white/50">
+        `;
+        if (roles.length === 0) {
+          listHtml += `<div class="empty-state"><div class="icon">👋</div><p class="font-medium text-stone-600">还没有角色</p><p class="text-sm text-stone-400 mt-1">点击右上角「添加角色」创建你的第一个AI好友</p></div>`;
+        } else {
+          roles.forEach(role => {
+            const roleMessages = messages[role.id] || [];
+            const lastMsg = roleMessages.length > 0 ? roleMessages[roleMessages.length-1].text : '点击开始聊天';
+            const lastTime = roleMessages.length > 0 ? roleMessages[roleMessages.length-1].time : '';
+            const avatarDisplay = role.avatar && role.avatar.startsWith('data:') ? `<img src="${role.avatar}" class="w-full h-full rounded-full object-cover">` : `<span class="text-3xl">${role.avatar || '😊'}</span>`;
+            let worldbookTag = '';
+            if (role.worldbookId) {
+              const books = loadWorldbooks();
+              const book = books.find(b => b.id === role.worldbookId);
+              if (book) worldbookTag = `<span class="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] border border-indigo-200 mt-1">📖 ${book.name}</span>`;
+            }
+            listHtml += `
+              <div onclick="openChatDetail('${role.id}')" class="chat-item flex items-center gap-3 p-4 border-b border-white/20 last:border-0 cursor-pointer hover:bg-white/20 active:bg-white/30">
+                <div class="w-14 h-14 rounded-full bg-white/40 flex items-center justify-center shadow-sm border border-white/30 shrink-0 overflow-hidden">${avatarDisplay}</div>
+                <div class="flex-1 min-w-0"><div class="flex justify-between items-center"><span class="font-bold text-stone-800">${role.name}</span><span class="text-xs text-stone-400">${lastTime}</span></div><p class="text-sm text-stone-500 truncate">${lastMsg}</p>${worldbookTag}</div>
+                <button onclick="event.stopPropagation(); deleteRole('${role.id}')" class="text-stone-300 hover:text-rose-500 transition-colors text-sm p-1"><i class="fas fa-trash-alt"></i></button>
+              </div>
+            `;
+          });
+        }
+        listHtml += `</div>`;
+        container.innerHTML = listHtml;
+        container.dataset.view = 'list';
+      }
+
+      window.openChatDetail = function(roleId) {
+        const container = document.getElementById('app-content');
+        const roles = loadRoles();
+        const role = roles.find(r => r.id === roleId);
+        if (!role) { renderChatList(container); return; }
+        const messages = loadMessages();
+        const roleMessages = messages[roleId] || [];
+        const avatarDisplay = role.avatar && role.avatar.startsWith('data:') ? `<img src="${role.avatar}" class="w-full h-full rounded-full object-cover">` : `<span class="text-3xl">${role.avatar || '😊'}</span>`;
+        let msgHtml = roleMessages.map(msg => {
+          if (msg.from === 'me') return `<div class="flex justify-end mb-3"><div class="bubble-mine px-4 py-2.5 rounded-2xl max-w-[75%] shadow-sm text-sm">${msg.text}</div></div>`;
+          else return `<div class="flex items-start gap-2 mb-3"><div class="w-9 h-9 rounded-full bg-white/40 flex items-center justify-center text-xl shrink-0 border border-white/30 overflow-hidden">${avatarDisplay}</div><div class="bubble-other px-4 py-2.5 rounded-2xl max-w-[75%] shadow-sm text-sm">${msg.text}</div></div>`;
+        }).join('');
+
+        container.innerHTML = `
+          <div class="flex items-center gap-3 pb-4 border-b border-white/30 mb-4">
+            <button onclick="renderChatList(document.getElementById('app-content'))" class="text-xl hover:text-pink-600 transition-colors bg-white/30 rounded-full p-2 w-10 h-10 flex items-center justify-center"><i class="fas fa-chevron-left"></i></button>
+            <div class="w-11 h-11 rounded-full bg-white/40 flex items-center justify-center text-xl border border-white/30 overflow-hidden">${avatarDisplay}</div>
+            <div><div class="font-bold text-stone-800 text-lg">${role.name}</div><div class="text-xs text-emerald-500">● 在线</div></div>
+          </div>
+          <div id="chat-msg-area" class="h-[50vh] md:h-[55vh] overflow-y-auto mb-4 px-1">${msgHtml || '<div class="text-center text-stone-400 text-sm mt-10">开始和 ' + role.name + ' 聊天吧</div>'}</div>
+          <div class="flex gap-3 bg-white/40 rounded-3xl p-2 border border-white/50">
+            <input id="chat-input" class="flex-1 p-3 bg-transparent focus:outline-none text-sm text-stone-700" placeholder="输入消息..." onkeydown="if(event.key==='Enter') sendChatMsg('${roleId}')">
+            <button onclick="sendChatMsg('${roleId}')" class="bg-pink-500 hover:bg-pink-600 px-5 rounded-2xl text-white font-bold shadow-lg transition-all text-sm">发送</button>
+          </div>
+        `;
+        const area = document.getElementById('chat-msg-area');
+        if (area) setTimeout(() => area.scrollTop = area.scrollHeight, 50);
+        container.dataset.view = 'detail';
+        container.dataset.contactId = roleId;
+        currentRoleId = roleId;
+      };
+
+      window.sendChatMsg = async function(roleId) {
+        const input = document.getElementById('chat-input');
+        if (!input || !input.value.trim()) return;
+        const text = input.value.trim();
+        input.value = '';
+
+        const roles = loadRoles();
+        const role = roles.find(r => r.id === roleId);
+        if (!role) { alert('角色不存在'); return; }
+
+        let messages = loadMessages();
+        if (!messages[roleId]) messages[roleId] = [];
+        messages[roleId].push({ from: 'me', text, time: '刚刚' });
+        saveMessagesToStorage(messages);
+
+        const area = document.getElementById('chat-msg-area');
+        if (area) {
+          area.insertAdjacentHTML('beforeend', `<div class="flex justify-end mb-3"><div class="bubble-mine px-4 py-2.5 rounded-2xl max-w-[75%] shadow-sm text-sm">${text}</div></div>`);
+          area.scrollTop = area.scrollHeight;
+        }
+
+        const apiUrl = localStorage.getItem('kitten_url') || '';
+        const apiKey = localStorage.getItem('kitten_key') || '';
+        const model = localStorage.getItem('kitten_model') || 'gpt-4o';
+
+        if (!apiUrl || !apiKey) {
+          const reply = '⚠️ 请先在「设置」中配置 API 地址和 Key';
+          messages[roleId].push({ from: 'other', text: reply, time: '刚刚' });
+          saveMessagesToStorage(messages);
+          if (area) {
+            const avatarDisplay = role.avatar && role.avatar.startsWith('data:') ? `<img src="${role.avatar}" class="w-full h-full rounded-full object-cover">` : `<span class="text-3xl">${role.avatar || '😊'}</span>`;
+            area.insertAdjacentHTML('beforeend', `<div class="flex items-start gap-2 mb-3"><div class="w-9 h-9 rounded-full bg-white/40 flex items-center justify-center text-xl shrink-0 border border-white/30 overflow-hidden">${avatarDisplay}</div><div class="bubble-other px-4 py-2.5 rounded-2xl max-w-[75%] shadow-sm text-sm">${reply}</div></div>`);
+            area.scrollTop = area.scrollHeight;
+          }
+          return;
+        }
+
+        let systemPrompt = role.persona || '你是一个友好的AI助手。';
+        if (role.userPersona) systemPrompt += `\n用户身份：${role.userPersona}`;
+        if (role.worldbookId) {
+          const books = loadWorldbooks();
+          const book = books.find(b => b.id === role.worldbookId);
+          if (book) {
+            if (book.mode === 'global') systemPrompt += `\n\n【世界观·${book.name}】${book.content}`;
+            else if (book.mode === 'trigger' && book.keywords && book.keywords.length > 0) {
+              const triggered = book.keywords.some(kw => text.includes(kw));
+              if (triggered) systemPrompt += `\n\n【世界观·${book.name}】${book.content}`;
+            }
+          }
+        }
+        systemPrompt += `\n请根据你的角色设定来回复，保持角色一致性。`;
+
+        const history = messages[roleId] || [];
+        const recentHistory = history.slice(-10);
+        const chatMessages = [
+          { role: 'system', content: systemPrompt },
+          ...recentHistory.map(m => ({ role: m.from === 'me' ? 'user' : 'assistant', content: m.text }))
+        ];
+
+        try {
+          const cleanUrl = apiUrl.trim().replace(/\/$/, '').replace(/\/v1$/, '');
+          const res = await fetch(`${cleanUrl}/v1/chat/completions`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model, messages: chatMessages, max_tokens: 1000 }),
+          });
+          const data = await res.json();
+          let reply = '';
+          if (data.choices && data.choices[0]) reply = data.choices[0].message.content;
+          else reply = '❌ AI回复异常，请稍后再试';
+
+          messages[roleId].push({ from: 'other', text: reply, time: '刚刚' });
+          saveMessagesToStorage(messages);
+          if (area) {
+            const avatarDisplay = role.avatar && role.avatar.startsWith('data:') ? `<img src="${role.avatar}" class="w-full h-full rounded-full object-cover">` : `<span class="text-3xl">${role.avatar || '😊'}</span>`;
+            area.insertAdjacentHTML('beforeend', `<div class="flex items-start gap-2 mb-3"><div class="w-9 h-9 rounded-full bg-white/40 flex items-center justify-center text-xl shrink-0 border border-white/30 overflow-hidden">${avatarDisplay}</div><div class="bubble-other px-4 py-2.5 rounded-2xl max-w-[75%] shadow-sm text-sm">${reply}</div></div>`);
+            area.scrollTop = area.scrollHeight;
+          }
+        } catch (e) {
+          const errorMsg = '❌ 请求失败: ' + e.message;
+          messages[roleId].push({ from: 'other', text: errorMsg, time: '刚刚' });
+          saveMessagesToStorage(messages);
+          if (area) {
+            const avatarDisplay = role.avatar && role.avatar.startsWith('data:') ? `<img src="${role.avatar}" class="w-full h-full rounded-full object-cover">` : `<span class="text-3xl">${role.avatar || '😊'}</span>`;
+            area.insertAdjacentHTML('beforeend', `<div class="flex items-start gap-2 mb-3"><div class="w-9 h-9 rounded-full bg-white/40 flex items-center justify-center text-xl shrink-0 border border-white/30 overflow-hidden">${avatarDisplay}</div><div class="bubble-other px-4 py-2.5 rounded-2xl max-w-[75%] shadow-sm text-sm">${errorMsg}</div></div>`);
+            area.scrollTop = area.scrollHeight;
+          }
+        }
+      };
+
+      window.openApp = function(appId) {
+        const view = document.getElementById('app-view');
+        const content = document.getElementById('app-content');
+        view.classList.remove('hidden');
+        view.scrollTop = 0;
+        if (appId === 'settings') renderSettings(content);
+        else if (appId === 'chat') renderChatList(content);
+        else if (appId === 'worldbook') renderWorldbookList(content);
+        else if (appId === 'cloud') renderCloud(content);
+        else if (appId === 'dev') renderDev(content);
+        else if (appId === 'appearance') renderAppearance(content);
+        else if (appId === 'couple') renderCouple(content);
+        else if (appId === 'cat') renderCat(content);
+      };
+
+      window.closeApp = function() {
+        document.getElementById('app-view').classList.add('hidden');
+        document.getElementById('app-content').innerHTML = '';
+      };
+
+      function renderCouple(container) {
+        container.innerHTML = `<h2 class="text-4xl font-black text-stone-800 mb-4">💕 情侣空间</h2><div class="glass-clear rounded-3xl p-8 text-center border border-white/50"><div class="text-6xl mb-4">💕</div><p class="text-xl font-bold text-stone-700">正在开发中</p><p class="text-stone-400 mt-2">即将上线，敬请期待 ✨</p></div>`;
+      }
+      function renderCat(container) {
+        container.innerHTML = `<h2 class="text-4xl font-black text-stone-800 mb-4">🐱 猫窝</h2><div class="glass-clear rounded-3xl p-8 text-center border border-white/50"><div class="text-6xl mb-4">🐱</div><p class="text-xl font-bold text-stone-700">正在开发中</p><p class="text-stone-400 mt-2">小猫咪正在努力建设中 🐾</p></div>`;
+      }
+
+      function renderSettings(container) {
+        const savedUrl = localStorage.getItem('kitten_url') || '';
+        const savedKey = localStorage.getItem('kitten_key') || '';
+        const savedModel = localStorage.getItem('kitten_model') || 'gpt-4o';
+        container.innerHTML = `
+          <h2 class="text-4xl font-black text-stone-800 mb-6">⚙️ 系统设置</h2>
+          <div class="space-y-5">
+            <div><label class="block text-stone-600 font-bold text-sm mb-1">中转 API 地址</label><input id="in-url" value="${savedUrl}" class="w-full p-4 rounded-2xl bg-white/70 border border-white/50 shadow-inner focus:outline-none focus:ring-2 focus:ring-pink-300" placeholder="例如 https://api.xxx.com"></div>
+            <div><label class="block text-stone-600 font-bold text-sm mb-1">API Key</label><input id="in-key" value="${savedKey}" class="w-full p-4 rounded-2xl bg-white/70 border border-white/50 shadow-inner focus:outline-none focus:ring-2 focus:ring-pink-300" placeholder="sk-..."></div>
+            <button onclick="testAndFetchModels()" class="bg-purple-500 hover:bg-purple-600 text-white w-full py-4 rounded-2xl font-bold shadow-lg transition-all duration-200 flex items-center justify-center gap-2">⚡ 测试连接 & 拉取模型</button>
+            <div><label class="block text-stone-600 font-bold text-sm mb-1">当前模型</label><select id="model-select" class="w-full p-4 rounded-2xl bg-white/70 border border-white/50 shadow-inner focus:outline-none focus:ring-2 focus:ring-pink-300"><option value="${savedModel}">${savedModel}</option></select></div>
+            <div class="text-xs text-stone-400 mt-2">💾 配置自动保存在浏览器</div>
+          </div>
+        `;
+        const urlInput = document.getElementById('in-url');
+        const keyInput = document.getElementById('in-key');
+        const modelSelect = document.getElementById('model-select');
+        function saveSettings() {
+          localStorage.setItem('kitten_url', urlInput.value.trim());
+          localStorage.setItem('kitten_key', keyInput.value.trim());
+          if (modelSelect.value) localStorage.setItem('kitten_model', modelSelect.value);
+        }
+        urlInput.addEventListener('change', saveSettings);
+        keyInput.addEventListener('change', saveSettings);
+        modelSelect.addEventListener('change', saveSettings);
+        urlInput.addEventListener('blur', saveSettings);
+        keyInput.addEventListener('blur', saveSettings);
+      }
+
+      function renderCloud(container) {
+        container.innerHTML = `
+          <h2 class="text-4xl font-black text-stone-800 mb-4">☁️ 云记忆库</h2>
+          <div class="glass-clear rounded-3xl p-6 border border-white/50 space-y-5">
+            <div class="flex items-center gap-3"><span class="w-3 h-3 bg-stone-300 rounded-full"></span><span class="font-bold text-stone-700">云服务器状态：<span class="text-stone-500">未连接</span></span></div>
+            <div class="bg-white/30 rounded-2xl p-4"><p class="text-stone-600 font-medium">🔗 服务器链接地址</p><div class="mt-2 p-3 bg-white/50 rounded-xl font-mono text-sm text-stone-500 break-all">https://your-server.com/api/memory</div><p class="text-xs text-stone-400 mt-2">💡 填入您的云记忆服务器地址，连接后即可自动同步记忆</p></div>
+            <div class="flex gap-3"><input id="cloud-url" placeholder="输入云记忆服务器地址..." class="flex-1 p-3 rounded-2xl bg-white/70 border border-white/50 shadow-inner focus:outline-none focus:ring-2 focus:ring-pink-300"><button onclick="saveCloudUrl()" class="bg-indigo-500 hover:bg-indigo-600 px-6 rounded-2xl text-white font-bold shadow-lg transition">连接</button></div>
+            <div class="text-sm text-stone-500 bg-white/20 p-3 rounded-xl">📡 记忆条目: <span class="font-mono">等待连接...</span></div>
+          </div>
+        `;
+      }
+
+      window.saveCloudUrl = function() {
+        const url = document.getElementById('cloud-url').value.trim();
+        if (url) { localStorage.setItem('kitten_cloud_url', url); alert('✅ 云记忆地址已保存'); }
+        else alert('⚠️ 请输入有效的服务器地址');
+      };
+
+      function renderDev(container) {
+        container.innerHTML = `
+          <h2 class="text-4xl font-black text-stone-800 mb-4">🛠️ 开发控制台</h2>
+          <div class="glass-clear rounded-3xl p-5 border border-white/50 space-y-4">
+            <div class="flex items-center justify-between"><span class="font-bold text-stone-700">📡 系统状态</span><span class="flex gap-3 text-sm"><span class="bg-emerald-100 px-3 py-1 rounded-full text-emerald-700">前端 ✔</span><span class="bg-stone-100 px-3 py-1 rounded-full text-stone-500">后端 ⚪</span></span></div>
+            <div class="bg-stone-900/10 rounded-2xl p-4 font-mono text-sm max-h-56 overflow-y-auto space-y-1.5"><div class="text-stone-500">[系统] 等待后端连接...</div></div>
+            <div class="flex gap-3"><button onclick="alert('🔄 刷新日志')" class="bg-rose-500 hover:bg-rose-600 px-6 py-2 rounded-2xl text-white font-bold shadow-lg transition">🔄 刷新</button><button onclick="alert('📡 通信正常')" class="bg-stone-500 hover:bg-stone-600 px-6 py-2 rounded-2xl text-white font-bold shadow-lg transition">📡 测试连接</button></div>
+            <p class="text-xs text-stone-400">* 后端连接后此处会显示实时日志</p>
+          </div>
+        `;
+      }
+
+      function renderAppearance(container) {
+        const customIcons = loadCustomIcons();
+        let appListHtml = '';
+        Object.keys(APP_ICONS).forEach(appId => {
+          const app = APP_ICONS[appId];
+          const hasCustom = customIcons[appId] && customIcons[appId].startsWith('data:');
+          const iconDisplay = hasCustom ? `<img src="${customIcons[appId]}" class="w-full h-full object-cover rounded-[18px]">` : `<span class="emoji-fallback">${app.emoji}</span>`;
+          appListHtml += `
+            <div class="icon-grid-item flex items-center gap-4 p-3 bg-white/20 rounded-xl hover:bg-white/40 transition-all border border-white/30" data-app="${appId}">
+              <div class="icon-preview-circle flex-shrink-0 w-14 h-14 rounded-[18px] bg-white/40 border border-white/30 flex items-center justify-center text-2xl overflow-hidden">${iconDisplay}</div>
+              <div class="flex-1 min-w-0"><div class="font-bold text-stone-700 text-sm">${app.label}</div><div class="text-xs text-stone-400">${hasCustom ? '自定义图标' : '默认图标'}</div></div>
+              <div class="flex items-center gap-2"><button onclick="selectAppForIcon('${appId}')" class="text-xs bg-pink-500 hover:bg-pink-600 text-white px-3 py-1.5 rounded-full transition-all shadow-sm flex items-center gap-1"><i class="fas fa-upload text-[10px]"></i> 更换</button>${hasCustom ? `<button onclick="resetAppIcon('${appId}')" class="text-xs bg-stone-200 hover:bg-rose-100 text-stone-500 hover:text-rose-500 px-2 py-1.5 rounded-full transition-all"><i class="fas fa-undo"></i></button>` : ''}</div>
+            </div>
+          `;
+        });
+
+        container.innerHTML = `
+          <h2 class="text-4xl font-black text-stone-800 mb-6">🎨 外观设置</h2>
+          <div class="glass-clear rounded-3xl p-6 border border-white/50 space-y-4 mb-6">
+            <div class="flex items-center gap-3"><span class="text-2xl">🖼️</span><span class="font-bold text-stone-700">桌面壁纸</span></div>
+            <div class="bg-white/30 rounded-2xl p-4 text-center"><i class="fas fa-image text-4xl text-stone-400 mb-2"></i><p class="text-sm text-stone-500">选择一张图片作为桌面背景</p></div>
+            <button onclick="document.getElementById('wallpaper-input').click()" class="w-full bg-gradient-to-r from-pink-400 to-purple-400 hover:from-pink-500 hover:to-purple-500 text-white py-3 rounded-2xl font-bold shadow-lg transition-all flex items-center justify-center gap-3"><i class="fas fa-upload"></i> 选择图片</button>
+            <button onclick="resetWallpaper()" class="w-full bg-stone-200 hover:bg-stone-300 text-stone-700 py-3 rounded-2xl font-bold transition-all flex items-center justify-center gap-3"><i class="fas fa-undo"></i> 恢复默认壁纸</button>
+          </div>
+          <div class="glass-clear rounded-3xl p-6 border border-white/50 space-y-4">
+            <div class="flex items-center justify-between"><div class="flex items-center gap-3"><span class="text-2xl">📱</span><span class="font-bold text-stone-700">应用图标</span></div><button onclick="resetAllIcons()" class="text-xs bg-stone-200 hover:bg-rose-100 text-stone-500 hover:text-rose-500 px-3 py-1.5 rounded-full transition-all flex items-center gap-1"><i class="fas fa-undo"></i> 重置全部</button></div>
+            <p class="text-xs text-stone-400">点击「更换」为每个应用选择自定义图标</p>
+            <div class="space-y-2 mt-2">${appListHtml}</div>
+            <div class="text-xs text-stone-400 text-center bg-white/20 p-3 rounded-xl mt-2">💡 支持 JPG, PNG, WebP 等常见格式</div>
+          </div>
+        `;
+        container.dataset.view = 'appearance';
+      }
+
+      window.testAndFetchModels = async function() {
+        const urlInput = document.getElementById('in-url');
+        const keyInput = document.getElementById('in-key');
+        const select = document.getElementById('model-select');
+        if (!urlInput || !keyInput || !select) return;
+        const rawUrl = urlInput.value.trim();
+        const key = keyInput.value.trim();
+        if (!rawUrl || !key) { alert('⚠️ 请填写完整的 API 地址和 Key'); return; }
+        const cleanUrl = rawUrl.replace(/\/$/, '').replace(/\/v1$/, '');
+        const apiUrl = `${cleanUrl}/v1/models`;
+        try {
+          select.innerHTML = '<option>⏳ 加载中...</option>';
+          const res = await fetch(apiUrl, { headers: { 'Authorization': `Bearer ${key}` } });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const data = await res.json();
+          if (data.data && Array.isArray(data.data)) {
+            select.innerHTML = data.data.map(m => `<option value="${m.id}">${m.id}</option>`).join('');
+            localStorage.setItem('kitten_url', cleanUrl);
+            localStorage.setItem('kitten_key', key);
+            if (data.data[0]) localStorage.setItem('kitten_model', data.data[0].id);
+            alert('✅ 连接成功！模型列表已更新');
+          } else throw new Error('返回数据格式异常');
+        } catch (e) {
+          alert('❌ 连接失败: ' + e.message);
+          select.innerHTML = '<option>⚠️ 获取失败</option>';
+        }
+      };
+
+    })();
+
+    function handleCover(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = e.target.result;
+        var cover = document.getElementById('recordCover');
+        var placeholder = document.getElementById('recordPlaceholder');
+        cover.style.backgroundImage = 'url(' + img + ')';
+        cover.style.backgroundSize = 'cover';
+        cover.style.backgroundPosition = 'center';
+        placeholder.style.display = 'none';
+        localStorage.setItem('record_cover', img);
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    }
+
+    function handleAvatarUpload(event, side) {
+      var file = event.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        var img = e.target.result;
+        var placeholderId = 'avatar' + side.charAt(0).toUpperCase() + side.slice(1) + 'Placeholder';
+        var el = document.getElementById(placeholderId);
+        if (el) {
+          el.innerHTML = `<img src="${img}" alt="avatar" style="width:100%;height:100%;object-fit:cover;">`;
+        }
+        localStorage.setItem('time_avatar_' + side, img);
+      };
+      reader.readAsDataURL(file);
+      event.target.value = '';
+    }
+  </script>
+</body>
+</html>
