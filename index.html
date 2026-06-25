@@ -71,7 +71,6 @@
       border: 1px solid rgba(255, 255, 255, 0.5);
       box-shadow: 0 4px 16px rgba(0,0,0,0.04);
       transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-      flex-shrink: 0;
     }
     .home-icon:hover {
       transform: scale(1.08) translateY(-4px);
@@ -98,7 +97,10 @@
       -webkit-backdrop-filter: blur(6px);
       border: 1px solid rgba(255, 255, 255, 0.4);
       box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-      flex-shrink: 0;
+    }
+    @media (min-width: 640px) {
+      .home-icon { width: 64px; height: 64px; font-size: 30px; }
+      .dock-icon-wrap { width: 64px; height: 64px; font-size: 30px; }
     }
     .app-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 18px; }
     .dock-icon-wrap img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; }
@@ -284,7 +286,6 @@
       display: block; 
       width: 160px;    
       height: 160px;   
-      margin: 10px auto; 
       flex-shrink: 0;  
     }
 
@@ -310,6 +311,10 @@
       width: 100vw;
       height: 100%;
       flex-shrink: 0;
+      overflow: hidden;   /* 【修复】禁止页面内滚动 */
+    }
+    /* 第二页如果将来有长内容可以单独开启滚动 */
+    .swiper-page.scrollable {
       overflow-y: auto;
       overflow-x: hidden;
     }
@@ -374,6 +379,44 @@
       flex: 1;
       text-align: center;
     }
+
+    /* ===== 第一页固定布局 ===== */
+    .page1-layout {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding-top: max(env(safe-area-inset-top, 56px), 56px);
+      padding-bottom: 120px; /* 给 dock 留空间 */
+      padding-left: 16px;
+      padding-right: 16px;
+      overflow: hidden;
+    }
+    .page1-time-section {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .page1-middle-section {
+      flex: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      min-height: 0;
+      position: relative;
+      padding-top: 10px;
+    }
+    .page1-icons-area {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px 16px;
+      align-self: flex-end;
+      padding-bottom: 10px;
+      margin-left: 4px;
+    }
+    .page1-player-area {
+      align-self: flex-start;
+      margin-right: 0;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -396,69 +439,76 @@
   <div class="swiper-fullscreen" id="homeSwiper">
     <div class="swiper-track" id="swiperTrack">
 
-      <!-- ========== 第一页 ========== -->
+      <!-- ========== 第一页（固定，不可滚动） ========== -->
       <div class="swiper-page">
-        <div class="flex flex-col items-center px-4 safe-area-top" style="padding-bottom: 120px;">
+        <div class="page1-layout">
 
-          <!-- 时间卡片 (左侧两个头像垂直排列) -->
-          <div class="time-glass w-full max-w-lg p-5 md:p-7 rounded-[3rem] text-center mb-8 shadow-xl border border-white/30 mt-2 flex items-center justify-between" style="cursor:default;">
-            <!-- 左侧头像组 垂直 -->
-            <div class="time-avatar-wrapper">
-              <div class="time-avatar" onclick="document.getElementById('avatarLeftInput').click();" title="点击上传头像">
-                <span id="avatarLeftPlaceholder">👤</span>
+          <!-- 时间卡片 -->
+          <div class="page1-time-section">
+            <div class="time-glass w-full max-w-lg p-5 md:p-7 rounded-[3rem] text-center shadow-xl border border-white/30 flex items-center justify-between mx-auto" style="cursor:default;">
+              <!-- 左侧头像组 垂直 -->
+              <div class="time-avatar-wrapper">
+                <div class="time-avatar" onclick="document.getElementById('avatarLeftInput').click();" title="点击上传头像">
+                  <span id="avatarLeftPlaceholder">👤</span>
+                </div>
+                <div class="time-avatar" onclick="document.getElementById('avatarRightInput').click();" title="点击上传头像">
+                  <span id="avatarRightPlaceholder">👤</span>
+                </div>
               </div>
-              <div class="time-avatar" onclick="document.getElementById('avatarRightInput').click();" title="点击上传头像">
-                <span id="avatarRightPlaceholder">👤</span>
+              <!-- 中间时间 -->
+              <div class="time-content">
+                <div id="date-display" class="text-sm font-medium text-black/80 tracking-wider mb-1">2026年6月24日 周三</div>
+                <div id="clock" class="text-6xl md:text-8xl font-black text-black tracking-tighter drop-shadow-sm">00:00</div>
+                <div class="text-black font-bold mt-0.5 text-sm md:text-lg tracking-wider">✦ KittenY's Desktop ✦</div>
               </div>
+              <!-- 右侧留白占位，保持对称 -->
+              <div class="w-[44px]"></div>
             </div>
-            <!-- 中间时间 -->
-            <div class="time-content">
-              <div id="date-display" class="text-sm font-medium text-black/80 tracking-wider mb-1">2026年6月24日 周三</div>
-              <div id="clock" class="text-6xl md:text-8xl font-black text-black tracking-tighter drop-shadow-sm">00:00</div>
-              <div class="text-black font-bold mt-0.5 text-sm md:text-lg tracking-wider">✦ KittenY's Desktop ✦</div>
-            </div>
-            <!-- 右侧留白占位，保持对称 -->
-            <div class="w-[44px]"></div>
           </div>
 
           <!-- 隐藏的file inputs -->
           <input type="file" id="avatarLeftInput" accept="image/*" class="hidden-input" onchange="handleAvatarUpload(event, 'left')">
           <input type="file" id="avatarRightInput" accept="image/*" class="hidden-input" onchange="handleAvatarUpload(event, 'right')">
 
-          <!-- 唱片机 -->
-          <div class="player" style="margin-left: auto; margin-right: 5px; margin-top: 20px;">
-            <div class="record-wrapper" id="recordDisc">
-              <div class="record-center" id="recordCover" onclick="document.getElementById('recordCoverInput').click();">
-                <span id="recordPlaceholder">💿</span>
+          <!-- 中间区域：左侧图标 + 右侧唱片机 -->
+          <div class="page1-middle-section">
+            <!-- 左侧 2x2 图标 -->
+            <div class="page1-icons-area" id="home-screen">
+              <div onclick="openApp('worldbook')" class="flex flex-col items-center cursor-pointer group" data-app="worldbook">
+                <div class="home-icon" id="icon-worldbook">📖</div>
+                <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">世界书</span>
               </div>
-              <div class="record-hole"></div>
+              <div onclick="openApp('dev')" class="flex flex-col items-center cursor-pointer group relative" data-app="dev">
+                <div class="home-icon" id="icon-dev">🛠️</div>
+                <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">开发</span>
+              </div>
+              <div onclick="openApp('couple')" class="flex flex-col items-center cursor-pointer group" data-app="couple">
+                <div class="home-icon" id="icon-couple">💕</div>
+                <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">情侣空间</span>
+              </div>
+              <div onclick="openApp('cat')" class="flex flex-col items-center cursor-pointer group" data-app="cat">
+                <div class="home-icon" id="icon-cat">🐱</div>
+                <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">猫窝</span>
+              </div>
             </div>
-            <div class="tonearm">
-              <div class="tonearm-arm"></div>
-              <div class="tonearm-head"></div>
-              <div class="tonearm-base"></div>
-              <div class="tonearm-shadow"></div>
-            </div>
-          </div>
-          <input type="file" id="recordCoverInput" accept="image/*" class="hidden-input" onchange="handleCover(event)">
 
-          <!-- 主屏幕图标：2x2 排列，靠左，与dock纵向对齐 -->
-          <div id="home-screen" class="grid grid-cols-2 gap-x-4 gap-y-5 w-full max-w-[170px] ml-3 mr-auto mt-0 mb-6" style="transform: translateY(-178px);">
-            <div onclick="openApp('worldbook')" class="flex flex-col items-center cursor-pointer group" data-app="worldbook">
-              <div class="home-icon" id="icon-worldbook">📖</div>
-              <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">世界书</span>
-            </div>
-            <div onclick="openApp('dev')" class="flex flex-col items-center cursor-pointer group relative" data-app="dev">
-              <div class="home-icon" id="icon-dev">🛠️</div>
-              <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">开发</span>
-            </div>
-            <div onclick="openApp('couple')" class="flex flex-col items-center cursor-pointer group" data-app="couple">
-              <div class="home-icon" id="icon-couple">💕</div>
-              <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">情侣空间</span>
-            </div>
-            <div onclick="openApp('cat')" class="flex flex-col items-center cursor-pointer group" data-app="cat">
-              <div class="home-icon" id="icon-cat">🐱</div>
-              <span class="text-stone-800 font-bold mt-2 text-sm drop-shadow-sm">猫窝</span>
+            <!-- 右侧唱片机 -->
+            <div class="page1-player-area">
+              <div class="player">
+                <div class="record-wrapper" id="recordDisc">
+                  <div class="record-center" id="recordCover" onclick="document.getElementById('recordCoverInput').click();">
+                    <span id="recordPlaceholder">💿</span>
+                  </div>
+                  <div class="record-hole"></div>
+                </div>
+                <div class="tonearm">
+                  <div class="tonearm-arm"></div>
+                  <div class="tonearm-head"></div>
+                  <div class="tonearm-base"></div>
+                  <div class="tonearm-shadow"></div>
+                </div>
+              </div>
+              <input type="file" id="recordCoverInput" accept="image/*" class="hidden-input" onchange="handleCover(event)">
             </div>
           </div>
 
@@ -485,7 +535,6 @@
 
   <!-- Dock栏 -->
   <!-- ===== 搜索框（Dock栏上方） ===== -->
-<!-- 将此代码块粘贴到 <body> 标签内、Dock栏（<div class="fixed bottom-4 ...">）之前的位置 -->
 <div class="fixed bottom-32 left-1/2 -translate-x-1/2 w-[200px] z-40 rounded-2xl px-3 py-2 flex items-center gap-2 transition-all duration-200" 
      style="background: rgba(255,255,255,0.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.04);">
   <i class="fas fa-search text-stone-400/70 text-sm"></i>
